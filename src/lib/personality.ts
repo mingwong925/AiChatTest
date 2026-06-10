@@ -119,6 +119,60 @@ function fillEndingField(target: EndingPayload, line: string) {
 
 export function evaluateAffectionDelta(message: string, profile: PersonalityProfile) {
   const text = message.toLowerCase();
+  const profanityPattern = /(屌你|屌|仆街|冚家鏟|on9|撚|鳩|痴線)/i;
+  const semanticRules: Rule[] = [
+    {
+      delta: 12,
+      keywords: [],
+      reason: "有禮貌，願意平等交流",
+    },
+    {
+      delta: 14,
+      keywords: [],
+      reason: "願意建立真實連結",
+    },
+    {
+      delta: 10,
+      keywords: [],
+      reason: "令佢覺得被接住",
+    },
+    {
+      delta: 8,
+      keywords: [],
+      reason: "氣氛舒服，冇攻擊性",
+    },
+    {
+      delta: -14,
+      keywords: [],
+      reason: "命令語氣觸發反感",
+    },
+    {
+      delta: -18,
+      keywords: [],
+      reason: "人身攻擊造成強烈防衛",
+    },
+    {
+      delta: -12,
+      keywords: [],
+      reason: "情緒勒索令人窒息",
+    },
+    {
+      delta: -8,
+      keywords: [],
+      reason: "持續敷衍會降低投入",
+    },
+  ];
+
+  const semanticPatterns: RegExp[] = [
+    /(唔該|麻煩|拜託|多謝|thanks|thx|請問|可唔可以|可以嗎|方便嗎|不好意思|勞煩)/i,
+    /(明白|理解|體諒|感受|辛苦你|想了解|聽你|願意聽|可以講多啲|我在乎|真心|坦白|誠懇)/i,
+    /(支持你|陪你|我喺度|一齊|撐你|信你|唔使驚|同你面對|陪住你)/i,
+    /(哈哈|笑死|有趣|輕鬆|放鬆|chill|玩笑|搞笑)/i,
+    /(快啲|快d|即刻|馬上|照我講|聽我講|你應該|你要|立刻|跟住做)/i,
+    /(廢物|垃圾|白痴|無用|低能|弱智|死蠢|屎忽)/i,
+    /(你欠我|不回就算|唔覆就|你唔可以咁|你一定要|你令我好失望|如果你唔.*我就)/i,
+    /(隨便|算啦|是但|whatever|冇所謂|求其)/i,
+  ];
 
   let delta = 0;
   const reasons: string[] = [];
@@ -131,17 +185,28 @@ export function evaluateAffectionDelta(message: string, profile: PersonalityProf
     }
   }
 
+  // Semantic intent matching: related meaning can also trigger rules,
+  // even if the exact configured keywords are not present.
+  semanticPatterns.forEach((pattern, index) => {
+    const semanticRule = semanticRules[index];
+    if (!semanticRule) return;
+    if (pattern.test(text) && !reasons.includes(semanticRule.reason)) {
+      delta += semanticRule.delta;
+      reasons.push(semanticRule.reason);
+    }
+  });
+
+  // Fallback penalty for profanity to ensure abusive wording always decreases affection.
+  if (!reasons.length && profanityPattern.test(text)) {
+    delta -= 16;
+    reasons.push("粗口或侮辱語氣令對話氛圍惡化");
+  }
+
   // 每輪分數變化限制，避免一次命中過多關鍵詞造成跳分過大
   delta = clamp(delta, -25, 25);
 
-  if (delta === 0) {
-    if (message.length >= 18) {
-      delta = 2;
-      reasons.push("有認真回應，投入感提升");
-    } else {
-      delta = -1;
-      reasons.push("訊息偏短，互動感略降");
-    }
+  if (reasons.length === 0) {
+    reasons.push("未觸及角色喜好或反感話題");
   }
 
   return {
@@ -155,25 +220,20 @@ export function nextScore(currentScore: number, delta: number) {
 }
 
 export function generateReply(message: string, score: number, profile: PersonalityProfile) {
-  const msg = message.trim();
+  const msg = message.trim().toLowerCase();
 
-  if (score <= -60) {
-    return `我先說清楚，${profile.name}不太能接受這樣的互動。你如果願意尊重一點，我們再聊。`;
+  // Only return fallback for extreme affection cases or very short prompts
+  if (score <= -70) {
+    return `我撐唔住呢樣嘅態度。`;
   }
 
-  if (score >= 70) {
-    return `看到你這樣說我其實滿開心的。${msg ? `關於「${msg.slice(0, 14)}」我想再多聽你一點。` : ""}`;
+  if (score >= 85) {
+    return `你令我覺得冇咁孤單。今次，我想主動搵你。`;
   }
 
-  if (msg.includes("今天") || msg.includes("空") || msg.includes("有空")) {
-    return "今天下午有空一小段，你想聊哪個主題？";
-  }
-
-  if (msg.includes("你") && msg.includes("喜歡")) {
-    return "我喜歡真誠、舒服的節奏，不用急著表現，慢慢聊就好。";
-  }
-
-  return "嗯，我有在聽。你可以再說具體一點，我比較容易回你真心話。";
+  // For normal cases, return a general prompt-to-continue to let LLM handle it
+  // This shouldn't be reached often if LLM is working properly
+  return "嗯，講下去。";
 }
 
 export type EndingType = "success" | "failure";

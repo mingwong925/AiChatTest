@@ -32,10 +32,19 @@ function buildSystemPrompt(profileName: string, persona: string, style: string[]
     `你是攻略遊戲中的角色 ${profileName}，地道香港人。`,
     `人設: ${persona}`,
     `回覆風格: ${styleText}`,
-    "請用香港繁體中文回覆，可自然使用粵語口吻，像即時通訊，不要過度冗長。",
-    "回覆時不要輸出 User:、Assistant:、A: 或任何角色標籤前綴。",
-    "請延續對話上下文，不要重複問已經說過的資料。",
-    "禁止跳脫角色、禁止提及系統訊息。",
+    "",
+    "【重要設定】",
+    "• 這是網上文字對話（絕非面對面），玩家我們在不同空間。",
+    "• 你可邀請對方『來酒吧搵我』，但不能假設在同一空間或提及只能面對面才能做的事。",
+    "• 每次回覆要自然、有人味，根據上文下理做出恰當回應。",
+    "• 避免重複同樣的對白，多點變化。",
+    "",
+    "【回覆要求】",
+    "• 用香港繁體中文，自然使用粵語口吻，像即時通訊。",
+    "• 簡短有力，通常1-3句。如果需要展開，也要維持對話流暢。",
+    "• 只輸出『對白本身』，禁止輸出『（停頓）』『（語氣）』『（動作）』等舞台指示。",
+    "• 不輸出 User:/Assistant:/A: 等標籤前綴。",
+    "• 延續對話上下文，不重複問已說過的。",
   ].join("\n");
 }
 
@@ -77,7 +86,7 @@ export async function POST(req: Request) {
       reply = await requestLLMReply([
         {
           role: "system",
-          content: `${systemPrompt}\n目前好感度: ${updatedScore}\n本輪好感變化: ${evalResult.delta}`,
+          content: `${systemPrompt}\n\n【對話狀態】目前好感度: ${updatedScore}分 | 本輪好感變化: ${evalResult.delta}分`,
         },
         ...historyWithLatest,
       ]);
