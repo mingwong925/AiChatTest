@@ -273,6 +273,7 @@ export default function Home() {
             )}
             <form className="flex gap-2" onSubmit={sendMessage}>
               <input
+                type="text"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 className="min-w-0 flex-1 rounded-full border border-emerald-200 px-4 py-2 text-sm outline-none ring-emerald-400 transition focus:ring-2"
