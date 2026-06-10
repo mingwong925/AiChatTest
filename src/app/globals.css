@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-start: #fff6e7;
+  --bg-end: #d3f7e3;
+  --surface: #ffffff;
+  --surface-soft: #f4f6f5;
+  --ink: #163022;
+  --muted: #6d7a73;
+  --accent: #29d37f;
+  --accent-deep: #07b96b;
+  --bubble-self: #b7f6cf;
+  --bubble-ai: #ffffff;
+  --danger: #dd3f5b;
+  --success: #129f62;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--surface);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(1200px 500px at -10% -20%, #ffd8a8 0%, transparent 60%),
+    radial-gradient(1200px 560px at 110% 130%, #7ce8b6 0%, transparent 65%),
+    linear-gradient(145deg, var(--bg-start), var(--bg-end));
+  color: var(--ink);
+  font-family: var(--font-body), sans-serif;
+}
+
+.chat-shell {
+  background: var(--surface);
+  border-radius: 26px;
+  border: 1px solid #dce8e1;
+  box-shadow: 0 28px 70px rgba(16, 58, 40, 0.14);
+}
+
+.chat-header-title {
+  font-family: var(--font-display), sans-serif;
+}
+
+.bubble {
+  max-width: 78%;
+  border-radius: 18px;
+  padding: 11px 13px;
+  line-height: 1.45;
+  box-shadow: 0 4px 16px rgba(19, 53, 38, 0.08);
+  animation: riseIn 280ms ease-out;
+}
+
+.bubble-self {
+  background: var(--bubble-self);
+  border-top-right-radius: 6px;
+}
+
+.bubble-ai {
+  background: var(--bubble-ai);
+  border-top-left-radius: 6px;
+}
+
+.score-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff8ca2 0%, #f8e588 48%, #64e59f 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.score-thumb {
+  position: absolute;
+  top: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid #1a8d58;
+  box-shadow: 0 2px 10px rgba(13, 83, 50, 0.2);
+  transform: translateX(-50%);
+}
+
+.dot-pattern {
+  background-image: radial-gradient(rgba(33, 92, 64, 0.1) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+
+@keyframes riseIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

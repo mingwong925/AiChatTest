@@ -1,4 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a Next.js demo project for an AI chat攻略 game.
+
+## LLM Setup (Replicate + MODEL)
+
+1. Create local env file:
+
+```bash
+cp .env.local.example .env.local
+```
+
+2. Edit `.env.local` and set values:
+
+```bash
+OPENAI_API_KEY=YOUR_REAL_KEY
+OPENAI_MODEL=anthropic/claude-4.5-sonnet
+OPENAI_BASE_URL=https://api.replicate.com/v1
+```
+
+3. Restart dev server after env changes:
+
+```bash
+npm run dev
+```
+
+### Which file reads API KEY and MODEL?
+
+- `src/lib/llm.ts` reads `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASE_URL`.
+- `src/app/api/chat/route.ts` calls the external LLM.
+
+Note: `OPENAI_API_KEY` now expects a Replicate token (typically starts with `r8_`).
+
+If API key is empty or external request fails, the app falls back to local rule-based reply generation.
 
 ## Getting Started
 

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Starter</title>
+    <style>
+      :root {
+        --bg-1: #f4fff8;
+        --bg-2: #dff7ec;
+        --card: #ffffff;
+        --ink: #113127;
+        --muted: #4b6a60;
+        --accent: #158f6b;
+        --accent-2: #0f6f53;
+        --ring: rgba(21, 143, 107, 0.2);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 15% 10%, #ffffff 0%, transparent 30%),
+          radial-gradient(circle at 90% 90%, #c8f0dd 0%, transparent 38%),
+          linear-gradient(130deg, var(--bg-1), var(--bg-2));
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .shell {
+        width: min(980px, 100%);
+        background: color-mix(in srgb, var(--card) 90%, transparent);
+        border: 1px solid #d7efe4;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(17, 49, 39, 0.12);
+        overflow: hidden;
+      }
+
+      .hero {
+        padding: 48px 28px 28px;
+        background:
+          linear-gradient(120deg, rgba(255, 255, 255, 0.8), rgba(223, 247, 236, 0.65)),
+          repeating-linear-gradient(
+            -45deg,
+            rgba(17, 49, 39, 0.04) 0,
+            rgba(17, 49, 39, 0.04) 2px,
+            transparent 2px,
+            transparent 10px
+          );
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent-2);
+        background: #e4f8f0;
+        padding: 7px 12px;
+        border-radius: 999px;
+      }
+
+      h1 {
+        margin: 14px 0 8px;
+        font-size: clamp(30px, 6vw, 48px);
+        line-height: 1.1;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .actions {
+        margin-top: 24px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .btn {
+        border: 0;
+        border-radius: 12px;
+        padding: 11px 16px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+
+      .btn.primary {
+        color: #fff;
+        background: linear-gradient(180deg, var(--accent), var(--accent-2));
+        box-shadow: 0 10px 24px rgba(21, 143, 107, 0.28);
+      }
+
+      .btn.secondary {
+        color: var(--accent-2);
+        background: #effcf6;
+        border: 1px solid #c5eadb;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        padding: 20px 22px 30px;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid #e1f2ea;
+        border-radius: 16px;
+        padding: 16px;
+      }
+
+      .card h2 {
+        font-size: 16px;
+        margin: 0 0 6px;
+      }
+
+      .card p {
+        font-size: 14px;
+      }
+
+      .footer {
+        border-top: 1px solid #e1f2ea;
+        padding: 12px 20px;
+        font-size: 12px;
+        color: #66897d;
+      }
+
+      .focus-ring:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 4px var(--ring);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <span class="badge">starter page</span>
+        <h1>Build your page fast.</h1>
+        <p>
+          This single HTML file gives you a clean starting point with responsive layout,
+          visual style variables, and simple action buttons.
+        </p>
+        <div class="actions">
+          <button class="btn primary focus-ring" type="button">Primary Action</button>
+          <button class="btn secondary focus-ring" type="button">Secondary Action</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Section A</h2>
+          <p>Replace this block with your hero copy, feature list, or product message.</p>
+        </article>
+        <article class="card">
+          <h2>Section B</h2>
+          <p>Use cards for highlights, quick links, pricing, or short announcements.</p>
+        </article>
+        <article class="card">
+          <h2>Section C</h2>
+          <p>Keep only what you need and remove extra parts as your page evolves.</p>
+        </article>
+      </section>
+
+      <footer class="footer">
+        <span id="year"></span> Web Starter
+      </footer>
+    </main>
+
+    <script>
+      document.getElementById("year").textContent = String(new Date().getFullYear());
+    </script>
+  </body>
+</html>
