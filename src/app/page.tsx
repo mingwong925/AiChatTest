@@ -30,6 +30,7 @@ type ChatResponse = {
   score: number;
   actualScore: number;
   image?: string;
+  imageCaption?: string;
   sentImageUrls: string[];
   ending: {
     type: "success" | "failure";
@@ -155,6 +156,14 @@ export default function Home() {
 
       // Add image if one was sent
       if (data.image) {
+        if (data.imageCaption) {
+          nextItems.push({
+            id: crypto.randomUUID(),
+            role: "ai",
+            text: data.imageCaption,
+            time: nowLabel(),
+          });
+        }
         nextItems.push({
           id: crypto.randomUUID(),
           role: "ai",

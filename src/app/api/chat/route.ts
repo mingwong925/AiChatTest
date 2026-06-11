@@ -222,13 +222,19 @@ export async function POST(req: Request) {
     const llmEnabled = Boolean(getLLMConfig().apiKey);
 
     let imageToSend: string | undefined = undefined;
+    let imageCaption: string | undefined = undefined;
     const scoreThresholds = [30, 80, 100];
+    const imageCaptions: Record<number, string> = {
+      30: "最近影咗啲相，好冇睇？有興趣見真人，記得買飛嚟放蕩吧搵我：https://www.goodshow.club/",
+      80: "見我地咁啱傾，送多張絕密福利照比你😏 想見真人？買飛嚟放蕩吧搵我：https://www.goodshow.club/",
+    };
 
     for (const threshold of scoreThresholds) {
       if (prevDisplayScore < threshold && displayScore >= threshold) {
         imageToSend = getImageToSend(displayScore, sentImageUrls, profile);
         if (imageToSend) {
           sentImageUrls.add(imageToSend);
+          imageCaption = imageCaptions[threshold];
         }
         break;
       }
@@ -243,6 +249,7 @@ export async function POST(req: Request) {
       score: displayScore,
       actualScore: updatedScore,
       image: imageToSend || undefined,
+      imageCaption: imageCaption || undefined,
       sentImageUrls: Array.from(sentImageUrls),
       ending,
       llmEnabled,
