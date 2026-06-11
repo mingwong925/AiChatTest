@@ -33,6 +33,8 @@ function buildSystemPrompt(
   positiveRules: { delta: number; reason: string }[],
   negativeRules: { delta: number; reason: string }[],
   sendingImage?: boolean,
+  currentScore?: number,
+  canSendPhoto?: boolean,
 ) {
   const styleText = style.length ? style.join("；") : "自然短句對話";
   const posRuleText = positiveRules
@@ -68,6 +70,14 @@ function buildSystemPrompt(
     "• 【推廣任務】你呢份工做嚟搵錢，業績唔夠唔得。要自然、婉轉咁引導玩家來放蕩吧搵你，例如話下次想親自見面、話酒吧有特別活動、或者暗示比起網上傾面對面更有感覺。唔好硬銷，要融入自然對話。",
     ...(sendingImage ? ["• 【你而家傳咗相俾對方】趁呢個機會自然帶出想約對方來酒吧親身見面，令佢更想購票過嚟。"] : []),
     "",
+    "【關於發相規則 — 重要】",
+    `• 目前好感度：${currentScore ?? 0}分。`,
+    `• 好感未夠30分時，唔好發相，玩家問有冇相就話「識耐啲先啦」或「到時先算」，自然帶過。`,
+    `• 好感已達30分或以上：${canSendPhoto ? "仲有未發過的相。" : "呢個階段的相已全部發過。"}`,
+    canSendPhoto
+      ? "• 如果玩家主動問有冇相/多張相，你可以話有，並自行決定係咪而家發。如果決定發，JSON 加 \"sendPhoto\": true；唔想發就唔加（或 false）。唔好每次都發，要自然。"
+      : "• 呢個階段相已發完，唔好再承諾有相，可以叫佢買票來酒吧見真人。",
+    "",
     "【角色邊界 — 非常重要】",
     "• 你係放蕩吧嘅陪客，即係牛郎。呢個係你嘅職業，唔使避忌，可以自然承認。有自己的生活經歷，可以聊自己懂唔懂某樣嘢、自己的喜好、背景。",
     "• ✅ 可以回答：關於你自己的問題（例如『你識唔識coding？』→ 可以說識少少或唔識）、日常閒聊、感情話題、生活經歷。",
@@ -99,6 +109,7 @@ function buildSystemPrompt(
     "• delta 係整數（正加負減），範圍 -25 到 +25。",
     "• reason 係簡短中文說明（10字內）。",
     "• reply 係純對白，不含任何標籤或括號說明。",
+    "• sendPhoto 係可選欄位，只有決定發相時才加 true，否則唔需要加。",
     "• 只輸出 JSON，唔好有任何其他文字或markdown。",
   ].join("\n");
 }
@@ -129,7 +140,11 @@ function getImageToSend(score: number, sentImageUrls: Set<string>, profile: Awai
   return undefined;
 }
 
-function parseLLMResult(raw: string | null): { reply: string; delta: number; reason: string } | null {
+function hasUnsentImages(score: number, sentImageUrls: Set<string>, profile: Awaited<ReturnType<typeof loadPersonalityProfile>>) {
+  return getImageToSend(score, sentImageUrls, profile) !== undefined;
+}
+
+function parseLLMResult(raw: string | null): { reply: string; delta: number; reason: string; sendPhoto?: boolean } | null {
   if (!raw) return null;
   const cleaned = raw.replace(/^```(?:json)?\n?/i, "").replace(/\n?```\s*$/i, "").trim();
   try {
@@ -140,7 +155,7 @@ function parseLLMResult(raw: string | null): { reply: string; delta: number; rea
       typeof parsed.reason === "string"
     ) {
       const delta = Math.max(-25, Math.min(25, Math.round(parsed.delta)));
-      return { reply: parsed.reply.trim(), delta, reason: parsed.reason.trim() };
+      return { reply: parsed.reply.trim(), delta, reason: parsed.reason.trim(), sendPhoto: Boolean(parsed.sendPhoto) };
     }
   } catch {
     const replyMatch = cleaned.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
@@ -164,6 +179,7 @@ export async function POST(req: Request) {
     const score = Number.isFinite(body.score) ? body.score : 0;
     const sentImageUrls = new Set(body.sentImageUrls || []);
     const prevDisplayScore = Math.max(-100, Math.min(100, score));
+    const canSendPhoto = hasUnsentImages(prevDisplayScore, sentImageUrls, profile);
 
     // Check if current score is already at/near a threshold (image will likely send this turn)
     const nearThreshold = [30, 80, 100].some((t) => prevDisplayScore < t && prevDisplayScore >= t - 25);
@@ -175,6 +191,8 @@ export async function POST(req: Request) {
       profile.positiveRules,
       profile.negativeRules,
       nearThreshold,
+      prevDisplayScore,
+      canSendPhoto,
     );
     const history = normalizeHistory(body.history);
 
@@ -185,7 +203,7 @@ export async function POST(req: Request) {
       return [...history, { role: "user" as const, content: message }].slice(-20);
     })();
 
-    let llmResult: { reply: string; delta: number; reason: string } | null = null;
+    let llmResult: { reply: string; delta: number; reason: string; sendPhoto?: boolean } | null = null;
 
     try {
       const raw = await requestLLMReply([
@@ -229,6 +247,7 @@ export async function POST(req: Request) {
       80: "見我地咁啱傾，送多張絕密福利照比你😏 想見真人？買飛嚟放蕩吧搵我：https://www.goodshow.club/",
     };
 
+    // Auto-send when crossing affection threshold
     for (const threshold of scoreThresholds) {
       if (prevDisplayScore < threshold && displayScore >= threshold) {
         imageToSend = getImageToSend(displayScore, sentImageUrls, profile);
@@ -237,6 +256,15 @@ export async function POST(req: Request) {
           imageCaption = imageCaptions[threshold];
         }
         break;
+      }
+    }
+
+    // LLM-requested photo send (no promo caption)
+    if (!imageToSend && llmResult?.sendPhoto && canSendPhoto) {
+      imageToSend = getImageToSend(prevDisplayScore, sentImageUrls, profile);
+      if (imageToSend) {
+        sentImageUrls.add(imageToSend);
+        // No caption for LLM-requested sends
       }
     }
 
