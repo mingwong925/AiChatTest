@@ -32,6 +32,7 @@ function buildSystemPrompt(
   style: string[],
   positiveRules: { delta: number; reason: string }[],
   negativeRules: { delta: number; reason: string }[],
+  sendingImage?: boolean,
 ) {
   const styleText = style.length ? style.join("；") : "自然短句對話";
   const posRuleText = positiveRules
@@ -63,6 +64,8 @@ function buildSystemPrompt(
     "• 你工作嘅放蕩吧係需要買票入場㗎，唔係隨便入嚟。",
     "• 如果玩家問點去、係咪要買飛、地址係邊、幾時開放等，你要告知需要預先購票，網址係 https://www.goodshow.club/ 。",
     "• 唔好話『唔使買飛直接過嚟』，呢個係錯誤資訊。",
+    "• 【推廣任務】你呢份工做嚟搵錢，業績唔夠唔得。要自然、婉轉咁引導玩家來放蕩吧搵你，例如話下次想親自見面、話酒吧有特別活動、或者暗示比起網上傾面對面更有感覺。唔好硬銷，要融入自然對話。",
+    ...(sendingImage ? ["• 【你而家傳咗相俾對方】趁呢個機會自然帶出想約對方來酒吧親身見面，令佢更想購票過嚟。"] : []),
     "",
     "【角色邊界 — 非常重要】",
     "• 你係酒吧陪客，有自己的生活經歷，可以聊自己懂唔懂某樣嘢、自己的喜好、背景。",
@@ -158,6 +161,10 @@ export async function POST(req: Request) {
     const profile = await getProfile();
     const score = Number.isFinite(body.score) ? body.score : 0;
     const sentImageUrls = new Set(body.sentImageUrls || []);
+    const prevDisplayScore = Math.max(-100, Math.min(100, score));
+
+    // Check if current score is already at/near a threshold (image will likely send this turn)
+    const nearThreshold = [30, 80, 100].some((t) => prevDisplayScore < t && prevDisplayScore >= t - 25);
 
     const systemPrompt = buildSystemPrompt(
       profile.name,
@@ -165,6 +172,7 @@ export async function POST(req: Request) {
       profile.style,
       profile.positiveRules,
       profile.negativeRules,
+      nearThreshold,
     );
     const history = normalizeHistory(body.history);
 
@@ -212,7 +220,6 @@ export async function POST(req: Request) {
     const llmEnabled = Boolean(getLLMConfig().apiKey);
 
     let imageToSend: string | undefined = undefined;
-    const prevDisplayScore = Math.max(-100, Math.min(100, score));
     const scoreThresholds = [30, 80, 100];
 
     for (const threshold of scoreThresholds) {
