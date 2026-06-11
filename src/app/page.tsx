@@ -98,7 +98,7 @@ export default function Home() {
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
-    if (!text || loading || ended) return;
+    if (!text || loading || ended === "failure") return;
 
     const userMessage: ChatItem = {
       id: crypto.randomUUID(),
@@ -173,7 +173,7 @@ export default function Home() {
         });
       }
 
-      if (data.ending) {
+      if (data.ending && !ended) {
         setEnded(data.ending.type);
         nextItems.push(
           {
@@ -328,11 +328,14 @@ export default function Home() {
           </div>
 
           <footer className="border-t border-purple-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
-            {ended && (
+            {ended === "success" && (
               <div className="mb-2 rounded-xl border border-emerald-200 bg-purple-50 px-3 py-1.5 text-xs md:text-sm text-purple-800">
-                {ended === "success"
-                  ? "你已達成 +100 好感度，成功結局已觸發。"
-                  : "攻略失敗，你已被封鎖。"}
+                你已達成 +100 好感度！繼續傾偈或重新開始。
+              </div>
+            )}
+            {ended === "failure" && (
+              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs md:text-sm text-rose-800">
+                攻略失敗，你已被封鎖。
               </div>
             )}
             <form className="flex gap-2" onSubmit={sendMessage}>
@@ -341,12 +344,12 @@ export default function Home() {
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 className="min-w-0 flex-1 rounded-full border border-emerald-200 px-4 py-2 text-sm outline-none ring-purple-400 transition focus:ring-2"
-                placeholder={ended ? "結局已達成，請按重新開始" : "輸入訊息，試著攻略他..."}
-                disabled={loading || Boolean(ended)}
+                placeholder={ended === "failure" ? "攻略失敗，你已被封鎖" : "輸入訊息，試著攻略他..."}
+                disabled={loading || ended === "failure"}
               />
               <button
                 type="submit"
-                disabled={loading || !input.trim() || Boolean(ended)}
+                disabled={loading || !input.trim() || ended === "failure"}
                 className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-deep)] disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
               >
                 {loading ? "傳送中..." : "送出"}
