@@ -72,8 +72,8 @@ function buildSystemPrompt(
     "",
     "【關於發相規則 — 重要】",
     `• 目前好感度：${currentScore ?? 0}分。`,
-    `• 好感未夠30分時，唔好發相，玩家問有冇相就話「識耐啲先啦」或「到時先算」，自然帶過。`,
-    `• 好感已達30分或以上：${canSendPhoto ? "仲有未發過的相。" : "呢個階段的相已全部發過。"}`,
+    `• 好感未夠15分時，唔好發相，玩家問有冇相就話「識耐啲先啦」或「到時先算」，自然帶過。`,
+    `• 好感已達15分或以上：${canSendPhoto ? "仲有未發過的相。" : "呢個階段的相已全部發過。"}`,`
     canSendPhoto
       ? "• 如果玩家主動問有冇相/多張相，你可以話有，並自行決定係咪而家發。如果決定發，JSON 加 \"sendPhoto\": true；唔想發就唔加（或 false）。唔好每次都發，要自然。如果玩家苦苦哀求（例如反覆求你、用可憐語氣），就心軟發一張，JSON 加 \"sendPhoto\": true。"
       : "• 呢個階段相已發完，唔好再承諾有相，可以叫佢買票來酒吧見真人。",
@@ -130,7 +130,7 @@ function getImageToSend(score: number, sentImageUrls: Set<string>, profile: Awai
     candidateImages = profile.imageStage100.images;
   } else if (displayScore >= 80 && profile.imageStage80.images.length > 0) {
     candidateImages = profile.imageStage80.images;
-  } else if (displayScore >= 30 && profile.imageStage30.images.length > 0) {
+  } else if (displayScore >= 15 && profile.imageStage30.images.length > 0) {
     candidateImages = profile.imageStage30.images;
   }
   const unsent = candidateImages.filter((img) => !sentImageUrls.has(img));
@@ -182,7 +182,7 @@ export async function POST(req: Request) {
     const canSendPhoto = hasUnsentImages(prevDisplayScore, sentImageUrls, profile);
 
     // Check if current score is already at/near a threshold (image will likely send this turn)
-    const nearThreshold = [30, 80, 100].some((t) => prevDisplayScore < t && prevDisplayScore >= t - 25);
+    const nearThreshold = [15, 80, 100].some((t) => prevDisplayScore < t && prevDisplayScore >= t - 15);
 
     const systemPrompt = buildSystemPrompt(
       profile.name,
@@ -241,9 +241,9 @@ export async function POST(req: Request) {
 
     let imageToSend: string | undefined = undefined;
     let imageCaption: string | undefined = undefined;
-    const scoreThresholds = [30, 80, 100];
+    const scoreThresholds = [15, 80, 100];
     const imageCaptions: Record<number, string> = {
-      30: "最近影咗啲相，好冇睇？有興趣見真人，記得買飛嚟放蕩吧搵我：https://www.goodshow.club/",
+      15: "最近影咗啲相，好冇睇？有興趣見真人，記得買飛嚟放蕩吧搵我：https://www.goodshow.club/",
       80: "見我地咁啱傾，送多張絕密福利照比你😏 想見真人？買飛嚟放蕩吧搵我：https://www.goodshow.club/",
     };
 

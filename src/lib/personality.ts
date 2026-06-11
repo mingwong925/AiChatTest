@@ -123,7 +123,7 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
       fillEndingField(failureEnding, line);
     }
 
-    if (section === "圖片階段_好感30" && (line.startsWith("http") || line.startsWith("/"))) {
+    if (section === "圖片階段_好感15" && (line.startsWith("http") || line.startsWith("/"))) {
       imageStage30.images.push(line);
     }
 
