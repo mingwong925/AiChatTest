@@ -60,43 +60,58 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
 
   let section = "";
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) continue;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
 
-    if (line.startsWith("## ")) {
-      section = line.replace("## ", "").trim();
+    if (trimmed.startsWith("# ")) {
+      continue; // Skip main title
+    }
+
+    if (trimmed.startsWith("名稱:")) {
+      name = trimmed.replace("名稱:", "").trim();
       continue;
     }
 
-    if (line.startsWith("名稱:")) {
-      name = line.replace("名稱:", "").trim();
+    if (trimmed.startsWith("頭像:")) {
+      avatar = trimmed.replace("頭像:", "").trim();
       continue;
     }
 
-    if (line.startsWith("頭像:")) {
-      avatar = line.replace("頭像:", "").trim() || avatar;
+    if (trimmed.startsWith("身份:")) {
+      persona = trimmed.replace("身份:", "").trim();
       continue;
     }
 
-    if (line.startsWith("身份:")) {
-      persona = line.replace("身份:", "").trim();
+    if (trimmed.startsWith("## ")) {
+      section = trimmed.replace("## ", "").trim();
       continue;
     }
 
-    if (section === "回覆風格" && line.startsWith("- ")) {
-      style.push(line.replace(/^-\s*/, "").trim());
+    if (section === "回覆風格" && trimmed.startsWith("- ")) {
+      style.push(trimmed.replace("- ", "").trim());
       continue;
     }
 
-    const ruleMatch = line.match(/^([+-]\d+)\s*:\s*(.+?)\s*\|\s*(.+)$/);
-    if (ruleMatch) {
-      const delta = Number(ruleMatch[1]);
-      const keywords = ruleMatch[2].split(",").map((item) => item.trim().toLowerCase()).filter(Boolean);
-      const reason = ruleMatch[3].trim();
-      const rule: Rule = { delta, keywords, reason };
-      if (delta >= 0) positiveRules.push(rule);
-      else negativeRules.push(rule);
+    if (section === "好感加分規則" && /^\+\d+:/.test(trimmed)) {
+      const [header, ...rest] = trimmed.split("|");
+      const [scoreStr, ...keywords] = header.split(":");
+      const delta = parseInt(scoreStr.trim(), 10);
+      const reason = rest.join("|").trim();
+      const keywordList = keywords[0]?.split(",").map((k) => k.trim()) || [];
+      const rule: Rule = { delta, keywords: keywordList, reason };
+      positiveRules.push(rule);
+      continue;
+    }
+
+    if (section === "好感扣分規則" && /^-\d+:/.test(trimmed)) {
+      const [header, ...rest] = trimmed.split("|");
+      const [scoreStr, ...keywords] = header.split(":");
+      const delta = parseInt(scoreStr.trim(), 10);
+      const reason = rest.join("|").trim();
+      const keywordList = keywords[0]?.split(",").map((k) => k.trim()) || [];
+      const rule: Rule = { delta, keywords: keywordList, reason };
+      negativeRules.push(rule);
       continue;
     }
 
@@ -173,6 +188,11 @@ export function evaluateAffectionDelta(message: string, profile: PersonalityProf
       reason: "氣氛舒服，冇攻擊性",
     },
     {
+      delta: 5,
+      keywords: [],
+      reason: "簡單讚賞，令人舒服但淺層",
+    },
+    {
       delta: -14,
       keywords: [],
       reason: "命令語氣觸發反感",
@@ -203,6 +223,7 @@ export function evaluateAffectionDelta(message: string, profile: PersonalityProf
     /(廢物|垃圾|白痴|無用|低能|弱智|死蠢|屎忽)/i,
     /(你欠我|不回就算|唔覆就|你唔可以咁|你一定要|你令我好失望|如果你唔.*我就)/i,
     /(隨便|算啦|是但|whatever|冇所謂|求其)/i,
+    /(讚|讚好|好正|你好叻|厲害|我喜歡你|你好)/i,
   ];
 
   let delta = 0;
