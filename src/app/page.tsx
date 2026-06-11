@@ -323,7 +323,7 @@ export default function Home() {
               <div className="mb-2 rounded-xl border border-emerald-200 bg-purple-50 px-3 py-1.5 text-xs md:text-sm text-purple-800">
                 {ended === "success"
                   ? "你已達成 +100 好感度，成功結局已觸發。"
-                  : "你已達成 -100 好感度，失敗結局已觸發。"}
+                  : "攻略失敗，你已被封鎖。"}
               </div>
             )}
             <form className="flex gap-2" onSubmit={sendMessage}>
