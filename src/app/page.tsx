@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Role = "user" | "ai";
 
@@ -64,6 +64,8 @@ export default function Home() {
   const [characterName, setCharacterName] = useState("梅");
   const [characterAvatar, setCharacterAvatar] = useState("/mei-avatar.png");
   const [sentImageUrls, setSentImageUrls] = useState<Set<string>>(new Set());
+  const bottomRef = useRef<HTMLDivElement>(null);
+
   const [items, setItems] = useState<ChatItem[]>([
     {
       id: crypto.randomUUID(),
@@ -72,6 +74,10 @@ export default function Home() {
       time: nowLabel(),
     },
   ]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [items]);
 
   const meterLeft = useMemo(() => ((score + 100) / 200) * 100, [score]);
   const mood = useMemo(() => {
@@ -309,6 +315,7 @@ export default function Home() {
                 </div>
               );
             })}
+            <div ref={bottomRef} />
           </div>
 
           <footer className="border-t border-purple-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
