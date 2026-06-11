@@ -123,15 +123,15 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
       fillEndingField(failureEnding, line);
     }
 
-    if (section === "圖片階段_好感30" && line.startsWith("http")) {
+    if (section === "圖片階段_好感30" && (line.startsWith("http") || line.startsWith("/"))) {
       imageStage30.images.push(line);
     }
 
-    if (section === "圖片階段_好感80" && line.startsWith("http")) {
+    if (section === "圖片階段_好感80" && (line.startsWith("http") || line.startsWith("/"))) {
       imageStage80.images.push(line);
     }
 
-    if (section === "圖片階段_好感100" && line.startsWith("http")) {
+    if (section === "圖片階段_好感100" && (line.startsWith("http") || line.startsWith("/"))) {
       imageStage100.images.push(line);
     }
   }
