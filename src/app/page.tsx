@@ -64,7 +64,7 @@ export default function Home() {
   const [characterName, setCharacterName] = useState("梅");
   const [characterAvatar, setCharacterAvatar] = useState("/mei-avatar.png");
   const [sentImageUrls, setSentImageUrls] = useState<Set<string>>(new Set());
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<ChatItem[]>([
     {
@@ -76,7 +76,8 @@ export default function Home() {
   ]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [items]);
 
   const meterLeft = useMemo(() => ((score + 100) / 200) * 100, [score]);
@@ -267,7 +268,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="flex-1 space-y-2 overflow-y-auto bg-[#faf6ff]/70 px-3 py-2 md:px-4 md:py-3">
+          <div ref={scrollContainerRef} className="flex-1 space-y-2 overflow-y-auto bg-[#faf6ff]/70 px-3 py-2 md:px-4 md:py-3">
             {items.map((item) => {
               const align = item.role === "user" ? "justify-end" : "justify-start";
               const bubbleClass = item.role === "user" ? "bubble-self" : "bubble-ai";
@@ -315,7 +316,6 @@ export default function Home() {
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </div>
 
           <footer className="border-t border-purple-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
