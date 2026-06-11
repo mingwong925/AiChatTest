@@ -24,6 +24,9 @@ type ChatResponse = {
   delta: number;
   reason: string;
   score: number;
+  actualScore: number;
+  image?: string;
+  sentImageUrls: string[];
   ending: {
     type: "success" | "failure";
     payload: {
@@ -54,6 +57,7 @@ export default function Home() {
   const [ended, setEnded] = useState<null | "success" | "failure">(null);
   const [characterName, setCharacterName] = useState("梅");
   const [characterAvatar, setCharacterAvatar] = useState("/mei-avatar.png");
+  const [sentImageUrls, setSentImageUrls] = useState<Set<string>>(new Set());
   const [items, setItems] = useState<ChatItem[]>([
     {
       id: crypto.randomUUID(),
@@ -107,7 +111,12 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, score, history }),
+        body: JSON.stringify({ 
+          message: text, 
+          score, 
+          history,
+          sentImageUrls: Array.from(sentImageUrls)
+        }),
       });
 
       if (!res.ok) {
@@ -118,6 +127,7 @@ export default function Home() {
       setScore(clamp(data.score));
       setCharacterName(data.characterName || "梅");
       setCharacterAvatar(data.characterAvatar || "/mei-avatar.png");
+      setSentImageUrls(new Set(data.sentImageUrls || []));
 
       const nextItems: ChatItem[] = [
         {
@@ -129,6 +139,17 @@ export default function Home() {
           reason: data.reason,
         },
       ];
+
+      // Add image if one was sent
+      if (data.image) {
+        nextItems.push({
+          id: crypto.randomUUID(),
+          role: "ai",
+          text: "",
+          time: nowLabel(),
+          media: { type: "image", url: data.image },
+        });
+      }
 
       if (data.ending) {
         setEnded(data.ending.type);
@@ -189,33 +210,33 @@ export default function Home() {
     <div className="flex min-h-screen items-center justify-center p-2 md:p-4">
       <main className="chat-shell dot-pattern w-full max-w-2xl overflow-hidden" style={{ aspectRatio: "9 / 14" }}>
         <section className="flex h-full flex-col">
-          <header className="border-b border-emerald-100 bg-emerald-50/90 px-4 py-2 md:px-6 md:py-3 flex-shrink-0">
+          <header className="border-b border-purple-100 bg-purple-50/90 px-4 py-2 md:px-6 md:py-3 flex-shrink-0">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <img
                   src={characterAvatar}
                   alt={`${characterName} avatar`}
-                  className="h-10 w-10 rounded-full border border-emerald-200 object-cover shadow-sm"
+                  className="h-10 w-10 rounded-full border border-purple-200 object-cover shadow-sm"
                 />
                 <div>
-                <h1 className="chat-header-title text-lg font-bold text-emerald-900 md:text-xl">*有料呻吟-牛郎攻略（梅）DEMO</h1>
-                <p className="text-xs md:text-sm text-emerald-700">角色: {characterName}</p>
+                <h1 className="chat-header-title text-lg font-bold text-purple-900 md:text-xl">*有料呻吟-牛郎攻略（梅）DEMO</h1>
+                <p className="text-xs md:text-sm text-purple-700">角色: {characterName}</p>
                 </div>
               </div>
-              <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm whitespace-nowrap">
+              <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-purple-700 shadow-sm whitespace-nowrap">
                 心情: {mood}
               </div>
             </div>
 
             <div className="mt-2">
-              <div className="mb-0.5 flex items-center justify-between text-xs text-emerald-800">
+              <div className="mb-0.5 flex items-center justify-between text-xs text-purple-800">
                 <span>{iconRow}</span>
                 <span>好感度 {score} / 100</span>
               </div>
               <div className="score-track">
                 <div className="score-thumb" style={{ left: `${meterLeft}%` }} />
               </div>
-              <div className="mt-0.5 flex justify-between text-[10px] text-emerald-700/80">
+              <div className="mt-0.5 flex justify-between text-[10px] text-purple-700/80">
                 <span>-100</span>
                 <span>0</span>
                 <span>+100</span>
@@ -223,7 +244,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="flex-1 space-y-2 overflow-y-auto bg-[#e9f8ee]/70 px-3 py-2 md:px-4 md:py-3">
+          <div className="flex-1 space-y-2 overflow-y-auto bg-[#faf6ff]/70 px-3 py-2 md:px-4 md:py-3">
             {items.map((item) => {
               const align = item.role === "user" ? "justify-end" : "justify-start";
               const bubbleClass = item.role === "user" ? "bubble-self" : "bubble-ai";
@@ -246,26 +267,26 @@ export default function Home() {
                         <source src={item.media.url} type="video/mp4" />
                       </video>
                     )}
-                    {item.text && <p className="text-sm text-emerald-950">{item.text}</p>}
+                    {item.text && <p className="text-sm text-purple-950">{item.text}</p>}
 
-                    <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] text-emerald-800/70">
+                    <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] text-purple-800/70">
                       {typeof item.delta === "number" && (
-                        <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-600"}>
+                        <span className={item.delta >= 0 ? "text-purple-700" : "text-rose-600"}>
                           {item.delta > 0 ? `+${item.delta}` : item.delta}
                         </span>
                       )}
                       <span>{item.time}</span>
                     </div>
-                    {item.reason && <p className="mt-0.5 text-[10px] text-emerald-700/80">{item.reason}</p>}
+                    {item.reason && <p className="mt-0.5 text-[10px] text-purple-700/80">{item.reason}</p>}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <footer className="border-t border-emerald-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
+          <footer className="border-t border-purple-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
             {ended && (
-              <div className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs md:text-sm text-emerald-800">
+              <div className="mb-2 rounded-xl border border-emerald-200 bg-purple-50 px-3 py-1.5 text-xs md:text-sm text-purple-800">
                 {ended === "success"
                   ? "你已達成 +100 好感度，成功結局已觸發。"
                   : "你已達成 -100 好感度，失敗結局已觸發。"}
@@ -276,7 +297,7 @@ export default function Home() {
                 type="text"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                className="min-w-0 flex-1 rounded-full border border-emerald-200 px-4 py-2 text-sm outline-none ring-emerald-400 transition focus:ring-2"
+                className="min-w-0 flex-1 rounded-full border border-emerald-200 px-4 py-2 text-sm outline-none ring-purple-400 transition focus:ring-2"
                 placeholder={ended ? "結局已達成，請按重新開始" : "輸入訊息，試著攻略他..."}
                 disabled={loading || Boolean(ended)}
               />
@@ -290,7 +311,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={restart}
-                className="rounded-full border border-emerald-200 px-3 py-2 text-sm text-emerald-800 transition hover:bg-emerald-50 whitespace-nowrap"
+                className="rounded-full border border-emerald-200 px-3 py-2 text-sm text-purple-800 transition hover:bg-purple-50 whitespace-nowrap"
               >
                 重開
               </button>

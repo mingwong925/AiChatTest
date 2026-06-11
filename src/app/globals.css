@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --bg-start: #fff6e7;
-  --bg-end: #d3f7e3;
+  --bg-start: #faf6ff;
+  --bg-end: #ffe8f3;
   --surface: #ffffff;
-  --surface-soft: #f4f6f5;
-  --ink: #163022;
-  --muted: #6d7a73;
-  --accent: #29d37f;
-  --accent-deep: #07b96b;
-  --bubble-self: #b7f6cf;
+  --surface-soft: #faf7fc;
+  --ink: #3d1f47;
+  --muted: #9b7fa8;
+  --accent: #d084d6;
+  --accent-deep: #c258c1;
+  --bubble-self: #f0d9f7;
   --bubble-ai: #ffffff;
   --danger: #dd3f5b;
-  --success: #129f62;
+  --success: #9d5fb6;
 }
 
 @theme inline {
@@ -23,8 +23,8 @@
 
 body {
   background:
-    radial-gradient(1200px 500px at -10% -20%, #ffd8a8 0%, transparent 60%),
-    radial-gradient(1200px 560px at 110% 130%, #7ce8b6 0%, transparent 65%),
+    radial-gradient(1200px 500px at -10% -20%, #f5c9e8 0%, transparent 60%),
+    radial-gradient(1200px 560px at 110% 130%, #e8d9f7 0%, transparent 65%),
     linear-gradient(145deg, var(--bg-start), var(--bg-end));
   color: var(--ink);
   font-family: var(--font-body), sans-serif;
@@ -33,8 +33,8 @@ body {
 .chat-shell {
   background: var(--surface);
   border-radius: 26px;
-  border: 1px solid #dce8e1;
-  box-shadow: 0 28px 70px rgba(16, 58, 40, 0.14);
+  border: 1px solid #e8d9f5;
+  box-shadow: 0 28px 70px rgba(61, 31, 71, 0.12);
 }
 
 .chat-header-title {

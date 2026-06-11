@@ -13,6 +13,10 @@ export type EndingPayload = {
   video: string;
 };
 
+export type ImageStagePayload = {
+  images: string[];
+};
+
 export type PersonalityProfile = {
   name: string;
   avatar: string;
@@ -22,6 +26,10 @@ export type PersonalityProfile = {
   negativeRules: Rule[];
   successEnding: EndingPayload;
   failureEnding: EndingPayload;
+  imageStage30: ImageStagePayload;
+  imageStage80: ImageStagePayload;
+  imageStage100: ImageStagePayload;
+  sentImageUrls: Set<string>; // Track already sent images
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -44,6 +52,9 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
   const negativeRules: Rule[] = [];
   const successEnding: EndingPayload = { text: "", image: "", video: "" };
   const failureEnding: EndingPayload = { text: "", image: "", video: "" };
+  const imageStage30: ImageStagePayload = { images: [] };
+  const imageStage80: ImageStagePayload = { images: [] };
+  const imageStage100: ImageStagePayload = { images: [] };
 
   let section = "";
 
@@ -94,6 +105,18 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
     if (section === "結局_失敗") {
       fillEndingField(failureEnding, line);
     }
+
+    if (section === "圖片階段_好感30" && line.startsWith("http")) {
+      imageStage30.images.push(line);
+    }
+
+    if (section === "圖片階段_好感80" && line.startsWith("http")) {
+      imageStage80.images.push(line);
+    }
+
+    if (section === "圖片階段_好感100" && line.startsWith("http")) {
+      imageStage100.images.push(line);
+    }
   }
 
   return {
@@ -105,6 +128,10 @@ function parsePersonalityMarkdown(markdown: string): PersonalityProfile {
     negativeRules,
     successEnding,
     failureEnding,
+    imageStage30,
+    imageStage80,
+    imageStage100,
+    sentImageUrls: new Set(),
   };
 }
 

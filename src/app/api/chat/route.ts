@@ -11,6 +11,7 @@ import { getLLMConfig, requestLLMReply } from "@/lib/llm";
 type ChatRequest = {
   message: string;
   score: number;
+  sentImageUrls?: string[]; // Track which images have already been sent
   history?: Array<{
     role: "user" | "assistant";
     content: string;
@@ -57,6 +58,31 @@ function normalizeHistory(history: ChatRequest["history"]) {
     .slice(-20);
 }
 
+function getImageToSend(score: number, sentImageUrls: Set<string>, profile: any) {
+  const displayScore = Math.max(-100, Math.min(100, score)); // Clamp for display
+  
+  // Determine which stage to get images from
+  let candidateImages: string[] = [];
+  
+  if (displayScore >= 100 && profile.imageStage100.images.length > 0) {
+    candidateImages = profile.imageStage100.images;
+  } else if (displayScore >= 80 && profile.imageStage80.images.length > 0) {
+    candidateImages = profile.imageStage80.images;
+  } else if (displayScore >= 30 && profile.imageStage30.images.length > 0) {
+    candidateImages = profile.imageStage30.images;
+  }
+  
+  // Filter out already sent images
+  const unsent = candidateImages.filter(img => !sentImageUrls.has(img));
+  
+  // Return random unsent image or undefined
+  if (unsent.length > 0) {
+    return unsent[Math.floor(Math.random() * unsent.length)];
+  }
+  
+  return undefined;
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as ChatRequest;
@@ -68,9 +94,11 @@ export async function POST(req: Request) {
 
     const profile = await getProfile();
     const score = Number.isFinite(body.score) ? body.score : 0;
+    const sentImageUrls = new Set(body.sentImageUrls || []);
 
     const evalResult = evaluateAffectionDelta(message, profile);
     const updatedScore = nextScore(score, evalResult.delta);
+    const displayScore = Math.max(-100, Math.min(100, updatedScore)); // Clamp for frontend display
     const systemPrompt = buildSystemPrompt(profile.name, profile.persona, profile.style);
     const history = normalizeHistory(body.history);
 
@@ -100,6 +128,22 @@ export async function POST(req: Request) {
 
     const ending = resolveEnding(updatedScore, profile);
     const llmEnabled = Boolean(getLLMConfig().apiKey);
+    
+    // Check if we should send an image (only once per threshold)
+    let imageToSend: string | undefined = undefined;
+    const prevDisplayScore = Math.max(-100, Math.min(100, score));
+    const scoreThresholds = [30, 80, 100];
+    
+    // Send image only if we just crossed a threshold
+    for (const threshold of scoreThresholds) {
+      if (prevDisplayScore < threshold && displayScore >= threshold) {
+        imageToSend = getImageToSend(displayScore, sentImageUrls, profile);
+        if (imageToSend) {
+          sentImageUrls.add(imageToSend);
+        }
+        break;
+      }
+    }
 
     return NextResponse.json({
       characterName: profile.name,
@@ -107,7 +151,10 @@ export async function POST(req: Request) {
       reply,
       delta: evalResult.delta,
       reason: evalResult.reason,
-      score: updatedScore,
+      score: displayScore,
+      actualScore: updatedScore, // Backend keeps track of actual score
+      image: imageToSend || undefined,
+      sentImageUrls: Array.from(sentImageUrls),
       ending,
       llmEnabled,
     });
