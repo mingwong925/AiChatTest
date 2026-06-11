@@ -154,6 +154,17 @@ export default function Home() {
         },
       ];
 
+      // Auto-show 預定門票 button when reply mentions bar URL
+      if (data.reply.includes("goodshow.club")) {
+        nextItems.push({
+          id: crypto.randomUUID(),
+          role: "ai",
+          text: "",
+          time: nowLabel(),
+          button: { text: "預定門票", url: "https://www.goodshow.club/" },
+        });
+      }
+
       // Add image if one was sent
       if (data.image) {
         if (data.imageCaption) {
