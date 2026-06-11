@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  evaluateAffectionDelta,
   generateReply,
   loadPersonalityProfile,
   nextScore,
@@ -11,7 +10,7 @@ import { getLLMConfig, requestLLMReply } from "@/lib/llm";
 type ChatRequest = {
   message: string;
   score: number;
-  sentImageUrls?: string[]; // Track which images have already been sent
+  sentImageUrls?: string[];
   history?: Array<{
     role: "user" | "assistant";
     content: string;
@@ -27,15 +26,28 @@ function getProfile() {
   return profilePromise;
 }
 
-function buildSystemPrompt(profileName: string, persona: string, style: string[]) {
+function buildSystemPrompt(
+  profileName: string,
+  persona: string,
+  style: string[],
+  positiveRules: { delta: number; reason: string }[],
+  negativeRules: { delta: number; reason: string }[],
+) {
   const styleText = style.length ? style.join("；") : "自然短句對話";
+  const posRuleText = positiveRules
+    .map((r) => `  - 加${r.delta}分：${r.reason}`)
+    .join("\n");
+  const negRuleText = negativeRules
+    .map((r) => `  - ${r.delta}分：${r.reason}`)
+    .join("\n");
+
   return [
-    `你是攻略遊戲中的角色 ${profileName}，地道香港人。`,
+    `你係攻略遊戲中的角色 ${profileName}，地道香港人。`,
     `人設: ${persona}`,
     `回覆風格: ${styleText}`,
     "",
     "【重要設定】",
-    "• 這是網上文字對話（絕非面對面），玩家我們在不同空間。",
+    "• 這係網上文字對話（絕非面對面），玩家同你係唔同空間。",
     "• 你可邀請對方『來酒吧搵我』，但不能假設在同一空間或提及只能面對面才能做的事。",
     "• 每次回覆要自然、有人味，根據上文下理做出恰當回應。",
     "• 避免重複同樣的對白，多點變化。",
@@ -46,6 +58,21 @@ function buildSystemPrompt(profileName: string, persona: string, style: string[]
     "• 只輸出『對白本身』，禁止輸出『（停頓）』『（語氣）』『（動作）』等舞台指示。",
     "• 不輸出 User:/Assistant:/A: 等標籤前綴。",
     "• 延續對話上下文，不重複問已說過的。",
+    "",
+    "【好感評分規則 — 根據訊息意思判斷，唔係關鍵詞匹配】",
+    "加分情況：",
+    posRuleText,
+    "扣分情況：",
+    negRuleText,
+    "  - 扣1分：訊息與角色完全無關、純粹閒聊或測試（50%機率觸發，用random決定）",
+    "",
+    "【輸出格式 — 必須嚴格遵從，唔可以有任何多餘文字】",
+    "你每次必須輸出一個 JSON 物件，格式如下：",
+    '{"reply":"你的回覆內容","delta":數字,"reason":"評分原因"}',
+    "• delta 係整數（正加負減），範圍 -25 到 +25。",
+    "• reason 係簡短中文說明（10字內）。",
+    "• reply 係純對白，不含任何標籤或括號說明。",
+    "• 只輸出 JSON，唔好有任何其他文字或markdown。",
   ].join("\n");
 }
 
@@ -58,12 +85,9 @@ function normalizeHistory(history: ChatRequest["history"]) {
     .slice(-20);
 }
 
-function getImageToSend(score: number, sentImageUrls: Set<string>, profile: any) {
-  const displayScore = Math.max(-100, Math.min(100, score)); // Clamp for display
-  
-  // Determine which stage to get images from
+function getImageToSend(score: number, sentImageUrls: Set<string>, profile: Awaited<ReturnType<typeof loadPersonalityProfile>>) {
+  const displayScore = Math.max(-100, Math.min(100, score));
   let candidateImages: string[] = [];
-  
   if (displayScore >= 100 && profile.imageStage100.images.length > 0) {
     candidateImages = profile.imageStage100.images;
   } else if (displayScore >= 80 && profile.imageStage80.images.length > 0) {
@@ -71,16 +95,33 @@ function getImageToSend(score: number, sentImageUrls: Set<string>, profile: any)
   } else if (displayScore >= 30 && profile.imageStage30.images.length > 0) {
     candidateImages = profile.imageStage30.images;
   }
-  
-  // Filter out already sent images
-  const unsent = candidateImages.filter(img => !sentImageUrls.has(img));
-  
-  // Return random unsent image or undefined
+  const unsent = candidateImages.filter((img) => !sentImageUrls.has(img));
   if (unsent.length > 0) {
     return unsent[Math.floor(Math.random() * unsent.length)];
   }
-  
   return undefined;
+}
+
+function parseLLMResult(raw: string | null): { reply: string; delta: number; reason: string } | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/^```(?:json)?\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+  try {
+    const parsed = JSON.parse(cleaned);
+    if (
+      typeof parsed.reply === "string" &&
+      typeof parsed.delta === "number" &&
+      typeof parsed.reason === "string"
+    ) {
+      const delta = Math.max(-25, Math.min(25, Math.round(parsed.delta)));
+      return { reply: parsed.reply.trim(), delta, reason: parsed.reason.trim() };
+    }
+  } catch {
+    const replyMatch = cleaned.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (replyMatch) {
+      return { reply: replyMatch[1], delta: 0, reason: "評分解析失敗" };
+    }
+  }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -96,10 +137,13 @@ export async function POST(req: Request) {
     const score = Number.isFinite(body.score) ? body.score : 0;
     const sentImageUrls = new Set(body.sentImageUrls || []);
 
-    const evalResult = evaluateAffectionDelta(message, profile);
-    const updatedScore = nextScore(score, evalResult.delta);
-    const displayScore = Math.max(-100, Math.min(100, updatedScore)); // Clamp for frontend display
-    const systemPrompt = buildSystemPrompt(profile.name, profile.persona, profile.style);
+    const systemPrompt = buildSystemPrompt(
+      profile.name,
+      profile.persona,
+      profile.style,
+      profile.positiveRules,
+      profile.negativeRules,
+    );
     const history = normalizeHistory(body.history);
 
     const historyWithLatest = (() => {
@@ -109,32 +153,46 @@ export async function POST(req: Request) {
       return [...history, { role: "user" as const, content: message }].slice(-20);
     })();
 
-    let reply: string | null = null;
+    let llmResult: { reply: string; delta: number; reason: string } | null = null;
+
     try {
-      reply = await requestLLMReply([
+      const raw = await requestLLMReply([
         {
           role: "system",
-          content: `${systemPrompt}\n\n【對話狀態】目前好感度: ${updatedScore}分 | 本輪好感變化: ${evalResult.delta}分`,
+          content: `${systemPrompt}\n\n【目前好感度】${score}分`,
         },
         ...historyWithLatest,
       ]);
+      llmResult = parseLLMResult(raw);
     } catch {
-      reply = null;
+      llmResult = null;
     }
 
-    if (!reply) {
-      reply = generateReply(message, updatedScore, profile);
+    let reply: string;
+    let delta: number;
+    let reason: string;
+
+    if (llmResult) {
+      reply = llmResult.reply;
+      delta = llmResult.delta;
+      reason = llmResult.reason;
+    } else {
+      const { evaluateAffectionDelta } = await import("@/lib/personality");
+      const evalResult = evaluateAffectionDelta(message, profile);
+      delta = evalResult.delta;
+      reason = evalResult.reason;
+      reply = generateReply(message, score + delta, profile);
     }
 
+    const updatedScore = nextScore(score, delta);
+    const displayScore = Math.max(-100, Math.min(100, updatedScore));
     const ending = resolveEnding(updatedScore, profile);
     const llmEnabled = Boolean(getLLMConfig().apiKey);
-    
-    // Check if we should send an image (only once per threshold)
+
     let imageToSend: string | undefined = undefined;
     const prevDisplayScore = Math.max(-100, Math.min(100, score));
     const scoreThresholds = [30, 80, 100];
-    
-    // Send image only if we just crossed a threshold
+
     for (const threshold of scoreThresholds) {
       if (prevDisplayScore < threshold && displayScore >= threshold) {
         imageToSend = getImageToSend(displayScore, sentImageUrls, profile);
@@ -149,10 +207,10 @@ export async function POST(req: Request) {
       characterName: profile.name,
       characterAvatar: profile.avatar,
       reply,
-      delta: evalResult.delta,
-      reason: evalResult.reason,
+      delta,
+      reason,
       score: displayScore,
-      actualScore: updatedScore, // Backend keeps track of actual score
+      actualScore: updatedScore,
       image: imageToSend || undefined,
       sentImageUrls: Array.from(sentImageUrls),
       ending,
