@@ -15,6 +15,10 @@ type ChatItem = {
     type: "image" | "video";
     url: string;
   };
+  button?: {
+    text: string;
+    url: string;
+  };
 };
 
 type ChatResponse = {
@@ -33,6 +37,8 @@ type ChatResponse = {
       text: string;
       image: string;
       video: string;
+      buttonText?: string;
+      buttonUrl?: string;
     };
   } | null;
 };
@@ -175,6 +181,17 @@ export default function Home() {
             media: { type: "video", url: data.ending.payload.video },
           },
         );
+        
+        // Add button if available
+        if (data.ending.payload.buttonText && data.ending.payload.buttonUrl) {
+          nextItems.push({
+            id: crypto.randomUUID(),
+            role: "ai",
+            text: "",
+            time: nowLabel(),
+            button: { text: data.ending.payload.buttonText, url: data.ending.payload.buttonUrl },
+          });
+        }
       }
 
       setItems((prev) => [...prev, ...nextItems]);
@@ -268,6 +285,16 @@ export default function Home() {
                       </video>
                     )}
                     {item.text && <p className="text-sm text-purple-950">{item.text}</p>}
+                    {item.button && (
+                      <a
+                        href={item.button.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--accent-deep)] transition"
+                      >
+                        {item.button.text}
+                      </a>
+                    )}
 
                     <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] text-purple-800/70">
                       {typeof item.delta === "number" && (

@@ -11,6 +11,8 @@ export type EndingPayload = {
   text: string;
   image: string;
   video: string;
+  buttonText?: string;
+  buttonUrl?: string;
 };
 
 export type ImageStagePayload = {
@@ -142,6 +144,8 @@ function fillEndingField(target: EndingPayload, line: string) {
   if (key === "TEXT") target.text = value;
   if (key === "IMAGE") target.image = value;
   if (key === "VIDEO") target.video = value;
+  if (key === "BUTTON_TEXT") target.buttonText = value;
+  if (key === "BUTTON_URL") target.buttonUrl = value;
 }
 
 export function evaluateAffectionDelta(message: string, profile: PersonalityProfile) {
