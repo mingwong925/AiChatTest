@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_TC, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,13 @@ const bodyFont = Noto_Sans_TC({
 export const metadata: Metadata = {
   title: "*有料呻吟-牛郎攻略（梅）DEMO",
   description: "香港風格好感度對話攻略遊戲",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
