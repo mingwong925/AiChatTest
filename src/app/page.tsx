@@ -21,6 +21,15 @@ type ChatItem = {
   };
 };
 
+type HeartParticle = {
+  id: string;
+  left: number;
+  size: number;
+  duration: number;
+  delay: number;
+  drift: number;
+};
+
 type ChatResponse = {
   characterName: string;
   characterAvatar?: string;
@@ -65,7 +74,10 @@ export default function Home() {
   const [characterName, setCharacterName] = useState("梅");
   const [characterAvatar, setCharacterAvatar] = useState("/mei-avatar.png");
   const [sentImageUrls, setSentImageUrls] = useState<Set<string>>(new Set());
+  const [heartParticles, setHeartParticles] = useState<HeartParticle[]>([]);
+  const [damageEffectOn, setDamageEffectOn] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const effectTimeoutsRef = useRef<number[]>([]);
 
   const [items, setItems] = useState<ChatItem[]>([
     {
@@ -80,6 +92,40 @@ export default function Home() {
     const el = scrollContainerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [items]);
+
+  useEffect(() => {
+    return () => {
+      effectTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      effectTimeoutsRef.current = [];
+    };
+  }, []);
+
+  function registerEffectTimeout(callback: () => void, delay: number) {
+    const timeoutId = window.setTimeout(() => {
+      callback();
+      effectTimeoutsRef.current = effectTimeoutsRef.current.filter((id) => id !== timeoutId);
+    }, delay);
+    effectTimeoutsRef.current.push(timeoutId);
+  }
+
+  function triggerPositiveEffect() {
+    const particles: HeartParticle[] = Array.from({ length: 12 }, () => ({
+      id: crypto.randomUUID(),
+      left: 12 + Math.random() * 76,
+      size: 16 + Math.round(Math.random() * 16),
+      duration: 850 + Math.round(Math.random() * 500),
+      delay: Math.round(Math.random() * 180),
+      drift: -24 + Math.round(Math.random() * 48),
+    }));
+
+    setHeartParticles(particles);
+    registerEffectTimeout(() => setHeartParticles([]), 1800);
+  }
+
+  function triggerNegativeEffect() {
+    setDamageEffectOn(true);
+    registerEffectTimeout(() => setDamageEffectOn(false), 520);
+  }
 
   const meterLeft = useMemo(() => ((score + 100) / 200) * 100, [score]);
   const mood = useMemo(() => {
@@ -221,6 +267,9 @@ export default function Home() {
         }
       }
 
+      if (data.delta > 0) triggerPositiveEffect();
+      if (data.delta < 0) triggerNegativeEffect();
+
       setItems((prev) => [...prev, ...nextItems]);
     } catch {
       setItems((prev) => [
@@ -237,50 +286,58 @@ export default function Home() {
     }
   }
 
-  function restart() {
-    setScore(0);
-    setEnded(null);
-    setItems([
-      {
-        id: crypto.randomUUID(),
-        role: "ai",
-        text: "你好，歡迎體驗「放蕩吧」嘅一對一線上空間。我係阿梅，今晚我負責聽，你負責講。點稱呼你，等我可以好好記住你？",
-        time: nowLabel(),
-      },
-    ]);
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center p-2 md:p-4">
-      <main className="chat-shell dot-pattern w-full max-w-2xl overflow-hidden" style={{ aspectRatio: "9 / 14" }}>
+      <main
+        className={`chat-shell chat-shell-rose w-full max-w-2xl overflow-hidden ${damageEffectOn ? "damage-shake" : ""}`}
+        style={{ aspectRatio: "9 / 14" }}
+      >
+        <div className="hearts-layer" aria-hidden="true">
+          {heartParticles.map((particle) => (
+            <span
+              key={particle.id}
+              className="heart-particle"
+              style={{
+                left: `${particle.left}%`,
+                fontSize: `${particle.size}px`,
+                animationDuration: `${particle.duration}ms`,
+                animationDelay: `${particle.delay}ms`,
+                transform: `translateX(${particle.drift}px)`,
+              }}
+            >
+              ❤
+            </span>
+          ))}
+        </div>
+        <div className={`damage-overlay ${damageEffectOn ? "active" : ""}`} aria-hidden="true" />
         <section className="flex h-full flex-col">
-          <header className="border-b border-purple-100 bg-purple-50/90 px-4 py-2 md:px-6 md:py-3 flex-shrink-0">
+          <header className="border-b border-[#9a7441]/35 bg-[#120b15]/90 px-4 py-2 md:px-6 md:py-3 flex-shrink-0 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <img
                   src={characterAvatar}
                   alt={`${characterName} avatar`}
-                  className="h-10 w-10 rounded-full border border-purple-200 object-cover shadow-sm"
+                  className="h-10 w-10 rounded-full border border-[#9a7441]/65 object-cover shadow-sm"
                 />
                 <div>
-                <h1 className="chat-header-title text-lg font-bold text-purple-900 md:text-xl">*有料呻吟-牛郎攻略（梅）DEMO</h1>
-                <p className="text-xs md:text-sm text-purple-700">角色: {characterName}</p>
+                <h1 className="chat-header-title text-lg font-bold text-[#f3d8b1] md:text-xl">*有料呻吟-牛郎攻略（梅）DEMO</h1>
+                <p className="text-xs md:text-sm text-[#e8c89a]">角色: {characterName}</p>
                 </div>
               </div>
-              <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-purple-700 shadow-sm whitespace-nowrap">
+              <div className="rounded-full border border-[#9a7441]/45 bg-[#1a1322]/85 px-3 py-1 text-xs font-semibold text-[#f4d7b6] shadow-sm whitespace-nowrap">
                 心情: {mood}
               </div>
             </div>
 
             <div className="mt-2">
-              <div className="mb-0.5 flex items-center justify-between text-xs text-purple-800">
+              <div className="mb-0.5 flex items-center justify-between text-xs text-[#f0d0a8]">
                 <span>{iconRow}</span>
                 <span>好感度 {score} / 100</span>
               </div>
               <div className="score-track">
                 <div className="score-thumb" style={{ left: `${meterLeft}%` }} />
               </div>
-              <div className="mt-0.5 flex justify-between text-[10px] text-purple-700/80">
+              <div className="mt-0.5 flex justify-between text-[10px] text-[#cfa87a]/85">
                 <span>-100</span>
                 <span>0</span>
                 <span>+100</span>
@@ -288,7 +345,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div ref={scrollContainerRef} className="flex-1 space-y-2 overflow-y-auto bg-[#faf6ff]/70 px-3 py-2 md:px-4 md:py-3">
+          <div ref={scrollContainerRef} className="flex-1 space-y-2 overflow-y-auto bg-black/25 px-3 py-2 md:px-4 md:py-3">
             {items.map((item) => {
               const align = item.role === "user" ? "justify-end" : "justify-start";
               const bubbleClass = item.role === "user" ? "bubble-self" : "bubble-ai";
@@ -299,7 +356,7 @@ export default function Home() {
                     <img
                       src={characterAvatar}
                       alt={`${characterName} avatar`}
-                      className="mr-2 mt-1 h-7 w-7 shrink-0 rounded-full border border-emerald-200 object-cover"
+                      className="mr-2 mt-1 h-7 w-7 shrink-0 rounded-full border border-[#9a7441]/60 object-cover"
                     />
                   )}
                   <div className={`bubble ${bubbleClass}`}>
@@ -311,7 +368,7 @@ export default function Home() {
                         <source src={item.media.url} type="video/mp4" />
                       </video>
                     )}
-                    {item.text && <p className="text-sm text-purple-950">{item.text}</p>}
+                    {item.text && <p className="text-sm text-[#f4e8ff]">{item.text}</p>}
                     {item.button && (
                       <a
                         href={item.button.url}
@@ -323,29 +380,28 @@ export default function Home() {
                       </a>
                     )}
 
-                    <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] text-purple-800/70">
-                      {typeof item.delta === "number" && (
-                        <span className={item.delta >= 0 ? "text-purple-700" : "text-rose-600"}>
-                          {item.delta > 0 ? `+${item.delta}` : item.delta}
+                    <div className="mt-0.5 flex items-center justify-end gap-2 text-[10px] text-[#dbc4f2]/80">
+                      {typeof item.delta === "number" && item.delta !== 0 && (
+                        <span className={item.delta >= 0 ? "text-[#d9b2ff]" : "text-rose-300"}>
+                          {`好感度${item.delta > 0 ? `+${item.delta}` : item.delta}`}
                         </span>
                       )}
                       <span>{item.time}</span>
                     </div>
-                    {item.reason && <p className="mt-0.5 text-[10px] text-purple-700/80">{item.reason}</p>}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <footer className="border-t border-purple-100 bg-white px-3 py-2 md:px-4 flex-shrink-0">
+          <footer className="border-t border-[#9a7441]/35 bg-[#120b15]/90 px-3 py-2 md:px-4 flex-shrink-0 backdrop-blur-sm">
             {ended === "success" && (
-              <div className="mb-2 rounded-xl border border-emerald-200 bg-purple-50 px-3 py-1.5 text-xs md:text-sm text-purple-800">
+              <div className="mb-2 rounded-xl border border-emerald-400/40 bg-emerald-900/25 px-3 py-1.5 text-xs md:text-sm text-emerald-100">
                 你已達成 +100 好感度！繼續傾偈或重新開始。
               </div>
             )}
             {ended === "failure" && (
-              <div className="mb-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs md:text-sm text-rose-800">
+              <div className="mb-2 rounded-xl border border-rose-400/40 bg-rose-900/30 px-3 py-1.5 text-xs md:text-sm text-rose-100">
                 攻略失敗，你已被封鎖。
               </div>
             )}
@@ -354,23 +410,16 @@ export default function Home() {
                 type="text"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                className="min-w-0 flex-1 rounded-full border border-emerald-200 px-4 py-2 text-base outline-none ring-purple-400 transition focus:ring-2"
+                className="min-w-0 flex-1 rounded-full border border-[#c3a7d8] bg-white px-4 py-2 text-base text-[#402150] outline-none ring-purple-500 transition placeholder:text-[#8f6ea8] focus:ring-2"
                 placeholder={ended === "failure" ? "攻略失敗，你已被封鎖" : "輸入訊息，試著攻略他..."}
                 disabled={loading || ended === "failure"}
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim() || ended === "failure"}
-                className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--accent-deep)] disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
+                className="rounded-full bg-[#d76cff] px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(181,74,255,0.45)] transition hover:bg-[#c14ef2] disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap"
               >
                 {loading ? "傳送中..." : "送出"}
-              </button>
-              <button
-                type="button"
-                onClick={restart}
-                className="rounded-full border border-emerald-200 px-3 py-2 text-sm text-purple-800 transition hover:bg-purple-50 whitespace-nowrap"
-              >
-                重開
               </button>
             </form>
           </footer>

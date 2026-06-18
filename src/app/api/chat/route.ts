@@ -35,6 +35,7 @@ function buildSystemPrompt(
   sendingImage?: boolean,
   currentScore?: number,
   canSendPhoto?: boolean,
+  currentTimeContext?: string,
 ) {
   const styleText = style.length ? style.join("；") : "自然短句對話";
   const posRuleText = positiveRules
@@ -50,10 +51,12 @@ function buildSystemPrompt(
     `回覆風格: ${styleText}`,
     "",
     "【重要設定】",
+    `• 現在香港時間：${currentTimeContext ?? "未知"}。你必須用這個時間作判斷。`,
     "• 這係網上文字對話（絕非面對面），玩家同你係唔同空間。",
     "• 你可邀請對方『來酒吧搵我』，但不能假設在同一空間或提及只能面對面才能做的事。",
     "• 每次回覆要自然、有人味，根據上文下理做出恰當回應。",
     "• 避免重複同樣的對白，多點變化。",
+    "• 唔好主動問玩家『點解未瞓』或『點解仲唔瞓』。除非玩家先提到自己眼瞓、失眠、或者明確講到睡覺話題，先可以順勢回應。",
     "",
     "【回覆要求】",
     "• 用香港繁體中文，自然粵語口吻，像WhatsApp傾偈，唔係演戲。",
@@ -112,6 +115,42 @@ function buildSystemPrompt(
     "• sendPhoto 係可選欄位，只有決定發相時才加 true，否則唔需要加。",
     "• 只輸出 JSON，唔好有任何其他文字或markdown。",
   ].join("\n");
+}
+
+function getCurrentHongKongTimeContext() {
+  const now = new Date();
+  const datePart = new Intl.DateTimeFormat("zh-HK", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).format(now);
+  const timePart = new Intl.DateTimeFormat("zh-HK", {
+    timeZone: "Asia/Hong_Kong",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(now);
+
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Hong_Kong",
+      hour: "2-digit",
+      hour12: false,
+    }).format(now),
+  );
+
+  const period =
+    hour >= 6 && hour < 12
+      ? "朝早"
+      : hour >= 12 && hour < 18
+      ? "下午"
+      : hour >= 18 && hour < 23
+      ? "夜晚"
+      : "深夜";
+
+  return `${datePart} ${timePart}（${period}）`;
 }
 
 function normalizeHistory(history: ChatRequest["history"]) {
@@ -180,6 +219,7 @@ export async function POST(req: Request) {
     const sentImageUrls = new Set(body.sentImageUrls || []);
     const prevDisplayScore = Math.max(-100, Math.min(100, score));
     const canSendPhoto = hasUnsentImages(prevDisplayScore, sentImageUrls, profile);
+    const currentTimeContext = getCurrentHongKongTimeContext();
 
     // Check if current score is already at/near a threshold (image will likely send this turn)
     const nearThreshold = [15, 80, 100].some((t) => prevDisplayScore < t && prevDisplayScore >= t - 15);
@@ -193,6 +233,7 @@ export async function POST(req: Request) {
       nearThreshold,
       prevDisplayScore,
       canSendPhoto,
+      currentTimeContext,
     );
     const history = normalizeHistory(body.history);
 
@@ -209,7 +250,7 @@ export async function POST(req: Request) {
       const raw = await requestLLMReply([
         {
           role: "system",
-          content: `${systemPrompt}\n\n【目前好感度】${score}分`,
+          content: `${systemPrompt}\n\n【目前好感度】${score}分\n【當前香港時間】${currentTimeContext}`,
         },
         ...historyWithLatest,
       ]);
