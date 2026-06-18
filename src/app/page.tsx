@@ -136,11 +136,6 @@ export default function Home() {
     return "警戒";
   }, [score]);
 
-  const iconRow = useMemo(() => {
-    const level = Math.round((score + 100) / 40);
-    return Array.from({ length: 5 }, (_, idx) => (idx < level ? "❤️" : "🤍")).join(" ");
-  }, [score]);
-
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
@@ -286,6 +281,25 @@ export default function Home() {
     }
   }
 
+  function restartAfterFailure() {
+    setScore(0);
+    setInput("");
+    setEnded(null);
+    setCharacterName("梅");
+    setCharacterAvatar("/mei-avatar.png");
+    setSentImageUrls(new Set());
+    setHeartParticles([]);
+    setDamageEffectOn(false);
+    setItems([
+      {
+        id: crypto.randomUUID(),
+        role: "ai",
+        text: "你好，歡迎體驗「放蕩吧」嘅一對一線上空間。我係阿梅，今晚我負責聽，你負責講。點稱呼你，等我可以好好記住你？",
+        time: nowLabel(),
+      },
+    ]);
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center p-2 md:p-4">
       <main
@@ -314,10 +328,11 @@ export default function Home() {
           <header className="border-b border-[#9a7441]/35 bg-[#120b15]/90 px-4 py-2 md:px-6 md:py-3 flex-shrink-0 backdrop-blur-sm">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={characterAvatar}
                   alt={`${characterName} avatar`}
-                  className="h-10 w-10 rounded-full border border-[#9a7441]/65 object-cover shadow-sm"
+                  className="h-[52px] w-[52px] rounded-full border border-[#9a7441]/65 object-cover shadow-sm"
                 />
                 <div>
                 <h1 className="chat-header-title text-lg font-bold text-[#f3d8b1] md:text-xl">*有料呻吟-牛郎攻略（梅）DEMO</h1>
@@ -331,7 +346,6 @@ export default function Home() {
 
             <div className="mt-2">
               <div className="mb-0.5 flex items-center justify-between text-xs text-[#f0d0a8]">
-                <span>{iconRow}</span>
                 <span>好感度 {score} / 100</span>
               </div>
               <div className="score-track">
@@ -353,15 +367,21 @@ export default function Home() {
               return (
                 <div key={item.id} className={`flex ${align}`}>
                   {item.role === "ai" && (
-                    <img
-                      src={characterAvatar}
-                      alt={`${characterName} avatar`}
-                      className="mr-2 mt-1 h-7 w-7 shrink-0 rounded-full border border-[#9a7441]/60 object-cover"
-                    />
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={characterAvatar}
+                        alt={`${characterName} avatar`}
+                        className="mr-2 mt-1 h-9 w-9 shrink-0 rounded-full border border-[#9a7441]/60 object-cover"
+                      />
+                    </>
                   )}
                   <div className={`bubble ${bubbleClass}`}>
                     {item.media?.type === "image" && (
-                      <img src={item.media.url} alt="ending" className="h-auto w-48 rounded-xl object-cover" />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.media.url} alt="ending" className="h-auto w-48 rounded-xl object-cover" />
+                      </>
                     )}
                     {item.media?.type === "video" && (
                       <video className="w-48 rounded-xl" controls preload="none">
@@ -401,8 +421,15 @@ export default function Home() {
               </div>
             )}
             {ended === "failure" && (
-              <div className="mb-2 rounded-xl border border-rose-400/40 bg-rose-900/30 px-3 py-1.5 text-xs md:text-sm text-rose-100">
-                攻略失敗，你已被封鎖。
+              <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-rose-400/40 bg-rose-900/30 px-3 py-1.5 text-xs md:text-sm text-rose-100">
+                <span>攻略失敗，你已被封鎖。</span>
+                <button
+                  type="button"
+                  onClick={restartAfterFailure}
+                  className="rounded-full bg-[#d76cff] px-3 py-1 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(181,74,255,0.35)] transition hover:bg-[#c14ef2]"
+                >
+                  重新開始
+                </button>
               </div>
             )}
             <form className="flex gap-2" onSubmit={sendMessage}>

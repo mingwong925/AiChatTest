@@ -272,7 +272,8 @@ export function nextScore(currentScore: number, delta: number) {
 }
 
 export function generateReply(message: string, score: number, profile: PersonalityProfile) {
-  const msg = message.trim().toLowerCase();
+  void message;
+  void profile;
 
   // Only return fallback for extreme affection cases or very short prompts
   if (score <= -70) {
